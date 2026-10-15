@@ -215,6 +215,7 @@ func (s *Service) Run(ctx context.Context) error {
 	if !homeEnabled {
 		go s.runAntigravityModelRefresh(ctx)
 		go s.runFloatboatModelRefresh(ctx)
+		go s.runLobsteraiServerModelRefresh(ctx)
 	}
 
 	select {

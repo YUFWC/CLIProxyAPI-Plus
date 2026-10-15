@@ -50,6 +50,8 @@ func (h *Handler) StartOAuthV8(c *gin.Context) {
 		h.RequestMetaToken(c)
 	case "floatboat":
 		h.RequestFloatboatToken(c)
+	case "lobsterai-server":
+		h.RequestLobsteraiServerToken(c)
 	default:
 		if !h.ServePluginAuthURL(c) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "provider_not_found"})

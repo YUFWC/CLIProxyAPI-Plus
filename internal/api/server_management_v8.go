@@ -44,6 +44,7 @@ func (s *Server) registerManagementV8Routes() {
 	// Per-provider quota reads. Same reasoning as above: the v8 contract serves
 	// the panel, so each provider route is registered here as well as under v0.
 	v8.GET("/floatboat-quota", s.mgmt.GetFloatboatQuota)
+	v8.GET("/lobsterai-server-quota", s.mgmt.GetLobsteraiServerQuota)
 	v8.GET("/codearts-quota", s.mgmt.GetCodeArtsQuota)
 	v8.GET("/qoder-cn-quota", s.mgmt.GetQoderCNQuota)
 	v8.GET("/qoder-ai-quota", s.mgmt.GetQoderCNQuota)
@@ -77,6 +78,7 @@ func (s *Server) registerManagementV8Routes() {
 	v8.POST("/xiaohuanxiong-auth-callback", s.mgmt.PostXiaohuanxiongAuthCallback)
 	v8.POST("/codearts-auth-callback", s.mgmt.PostCodeArtsAuthCallback)
 	v8.POST("/floatboat-auth-callback", s.mgmt.PostFloatboatAuthCallback)
+	v8.POST("/lobsterai-server-auth-callback", s.mgmt.PostLobsteraiServerAuthCallback)
 
 	// Web-session login persists a credential like any other acquisition flow, so
 	// it belongs to the same authenticated v8 surface the panel calls.

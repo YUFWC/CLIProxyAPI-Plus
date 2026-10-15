@@ -13,6 +13,7 @@ import (
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/auth/codex"
 	floatboatauth "github.com/router-for-me/CLIProxyAPI/v8/internal/auth/floatboat"
 	kimiauth "github.com/router-for-me/CLIProxyAPI/v8/internal/auth/kimi"
+	lobsteraiserverauth "github.com/router-for-me/CLIProxyAPI/v8/internal/auth/lobsteraiserver"
 	minimaxauth "github.com/router-for-me/CLIProxyAPI/v8/internal/auth/minimax"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/constant"
@@ -274,6 +275,27 @@ func synthesizeFileAuths(ctx *SynthesisContext, fullPath string, data []byte) ([
 			if key, _ := metadata["api_key"].(string); strings.TrimSpace(key) != "" {
 				a.Attributes["api_key"] = strings.TrimSpace(key)
 			} else if token, _ := metadata["access_token"].(string); strings.TrimSpace(token) != "" {
+				a.Attributes["access_token"] = strings.TrimSpace(token)
+			}
+		}
+	}
+	if provider == constant.LobsteraiServer {
+		a.Attributes[coreauth.AttributeAuthKind] = coreauth.AuthKindOAuth
+		baseURL, _ := metadata["base_url"].(string)
+		baseURL = strings.TrimSpace(baseURL)
+		if baseURL == "" {
+			baseURL = lobsteraiserverauth.DefaultProxyBaseURL
+		}
+		a.Attributes["base_url"] = baseURL
+		backendURL, _ := metadata["backend_url"].(string)
+		backendURL = strings.TrimSpace(backendURL)
+		if backendURL == "" {
+			backendURL = lobsteraiserverauth.DefaultBackendURL
+		}
+		a.Attributes["backend_url"] = backendURL
+		// The account access token authorizes both the gateway and refresh.
+		if strings.TrimSpace(a.Attributes["access_token"]) == "" {
+			if token, _ := metadata["access_token"].(string); strings.TrimSpace(token) != "" {
 				a.Attributes["access_token"] = strings.TrimSpace(token)
 			}
 		}

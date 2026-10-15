@@ -183,6 +183,9 @@ func (s *Service) registerModelsForAuthWithCache(ctx context.Context, a *coreaut
 	case constant.Floatboat:
 		models = registry.GetFloatboatModels()
 		models = applyExcludedModels(models, excluded)
+	case constant.LobsteraiServer:
+		models = registry.GetLobsteraiServerModels()
+		models = applyExcludedModels(models, excluded)
 	case "codebuddy-cn":
 		models = registry.GetCodeBuddyCNModels()
 		if entry := s.resolveConfigCodeBuddyCNKey(a); entry != nil {
@@ -432,6 +435,11 @@ func (s *Service) registerModelsForAuthWithCache(ctx context.Context, a *coreaut
 			// per-account list, so refresh it in the background.
 			s.asyncProbeFloatboatCatalogue(ctx, a, key)
 		}
+		if strings.EqualFold(strings.TrimSpace(a.Provider), constant.LobsteraiServer) {
+			// The backend owns the real per-account catalogue; the static list is
+			// only a fallback, so refresh it in the background.
+			s.asyncProbeLobsteraiServerCatalogue(ctx, a, key)
+		}
 		return
 	}
 
@@ -441,6 +449,9 @@ func (s *Service) registerModelsForAuthWithCache(ctx context.Context, a *coreaut
 	}
 	if provider == constant.Floatboat {
 		s.asyncProbeFloatboatCatalogue(ctx, a, key)
+	}
+	if provider == constant.LobsteraiServer {
+		s.asyncProbeLobsteraiServerCatalogue(ctx, a, key)
 	}
 }
 

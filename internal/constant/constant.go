@@ -84,4 +84,11 @@ const (
 	// against floatboat.ai and speaks Anthropic Messages to the managed gateway
 	// at newapi.aoe.chat.
 	Floatboat = "floatboat"
+
+	// LobsteraiServer represents the LobsterAI (NetEase/Youdao) managed-account
+	// provider identifier. It signs in through a browser authorization-code flow
+	// with a loopback callback against lobsterai-server.youdao.com and forwards
+	// inference to that same origin's /api/proxy gateway, which accepts OpenAI
+	// Chat Completions, OpenAI Responses and Anthropic Messages per model.
+	LobsteraiServer = "lobsterai-server"
 )

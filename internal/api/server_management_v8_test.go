@@ -135,6 +135,10 @@ func TestManagementV8DispatchesBuiltInOAuthProviders(t *testing.T) {
 		{provider: "xiaohuanxiong", flow: "callback", urlHint: "//xiaohuanxiong.com/"},
 		{provider: "codearts", flow: "callback", urlHint: "//codearts.huaweicloud.com/"},
 		{provider: "floatboat", flow: "manual", urlHint: "//floatboat.ai/"},
+		// The login surface is the product portal hash route, NOT the backend
+		// origin: {base}/login is an authenticated API that answers a stray browser
+		// request with a JSON envelope instead of a page.
+		{provider: "lobsterai-server", flow: "manual", urlHint: "//lobsterai.youdao.com/portal#/login"},
 	} {
 		t.Run(tc.provider, func(t *testing.T) {
 			req := httptest.NewRequest(http.MethodGet, "/v8/management/oauth/auth-url?provider="+tc.provider, nil)
@@ -213,6 +217,7 @@ func TestManagementV8ServesProviderCallbackAndWebLoginRoutes(t *testing.T) {
 		{"/v8/management/xiaohuanxiong-auth-callback", "PostXiaohuanxiongAuthCallback"},
 		{"/v8/management/codearts-auth-callback", "PostCodeArtsAuthCallback"},
 		{"/v8/management/floatboat-auth-callback", "PostFloatboatAuthCallback"},
+		{"/v8/management/lobsterai-server-auth-callback", "PostLobsteraiServerAuthCallback"},
 		{"/v8/management/web-login/qwen-web", "LoginQwenWeb"},
 	} {
 		t.Run(tc.path, func(t *testing.T) {
@@ -265,8 +270,10 @@ func TestManagementV8IndependentContract(t *testing.T) {
 		"POST /v8/management/trae-auth-callback", "POST /v8/management/cline-auth-callback",
 		"POST /v8/management/xiaohuanxiong-auth-callback", "POST /v8/management/codearts-auth-callback",
 		"POST /v8/management/floatboat-auth-callback", "POST /v8/management/web-login/qwen-web",
+		"POST /v8/management/lobsterai-server-auth-callback",
 		"POST /v8/management/routing/cooldown/reset",
 		"GET /v8/management/floatboat-quota",
+		"GET /v8/management/lobsterai-server-quota",
 		"GET /v8/management/codearts-quota", "GET /v8/management/qoder-cn-quota",
 		"GET /v8/management/qoder-ai-quota", "GET /v8/management/minimax-quota",
 		"GET /v8/management/provider-models", "GET /v8/management/provider-models/:provider",

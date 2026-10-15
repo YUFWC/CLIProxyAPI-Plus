@@ -32,6 +32,7 @@ func newAuthManager() *sdkAuth.Manager {
 		sdkAuth.NewDevinAuthenticator(),
 		sdkAuth.NewMetaAuthenticator(),
 		sdkAuth.NewFloatboatAuthenticator(),
+		sdkAuth.NewLobsteraiServerAuthenticator(),
 	)
 	return manager
 }

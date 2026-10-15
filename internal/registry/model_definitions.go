@@ -26,28 +26,29 @@ const (
 
 // staticModelsJSON mirrors the top-level structure of models.json.
 type staticModelsJSON struct {
-	Claude      []*ModelInfo `json:"claude"`
-	Gemini      []*ModelInfo `json:"gemini"`
-	Vertex      []*ModelInfo `json:"vertex"`
-	AIStudio    []*ModelInfo `json:"aistudio"`
-	CodexFree   []*ModelInfo `json:"codex-free"`
-	CodexTeam   []*ModelInfo `json:"codex-team"`
-	CodexPlus   []*ModelInfo `json:"codex-plus"`
-	CodexPro    []*ModelInfo `json:"codex-pro"`
-	Kimi        []*ModelInfo `json:"kimi"`
-	Antigravity []*ModelInfo `json:"antigravity"`
-	CodeBuddyCN []*ModelInfo `json:"codebuddy-cn"`
-	CodeBuddyAI []*ModelInfo `json:"codebuddy-ai"`
-	DeepSeekWeb []*ModelInfo `json:"deepseek-web"`
-	XAI         []*ModelInfo `json:"xai"`
-	Devin       []*ModelInfo `json:"devin"`
-	Trae        []*ModelInfo `json:"trae"`
-	Cline       []*ModelInfo `json:"cline"`
-	QoderCN     []*ModelInfo `json:"qoder-cn"`
-	QoderAI     []*ModelInfo `json:"qoder-ai"`
-	Meta        []*ModelInfo `json:"meta"`
-	Minimax     []*ModelInfo `json:"minimax"`
-	Floatboat   []*ModelInfo `json:"floatboat"`
+	Claude          []*ModelInfo `json:"claude"`
+	Gemini          []*ModelInfo `json:"gemini"`
+	Vertex          []*ModelInfo `json:"vertex"`
+	AIStudio        []*ModelInfo `json:"aistudio"`
+	CodexFree       []*ModelInfo `json:"codex-free"`
+	CodexTeam       []*ModelInfo `json:"codex-team"`
+	CodexPlus       []*ModelInfo `json:"codex-plus"`
+	CodexPro        []*ModelInfo `json:"codex-pro"`
+	Kimi            []*ModelInfo `json:"kimi"`
+	Antigravity     []*ModelInfo `json:"antigravity"`
+	CodeBuddyCN     []*ModelInfo `json:"codebuddy-cn"`
+	CodeBuddyAI     []*ModelInfo `json:"codebuddy-ai"`
+	DeepSeekWeb     []*ModelInfo `json:"deepseek-web"`
+	XAI             []*ModelInfo `json:"xai"`
+	Devin           []*ModelInfo `json:"devin"`
+	Trae            []*ModelInfo `json:"trae"`
+	Cline           []*ModelInfo `json:"cline"`
+	QoderCN         []*ModelInfo `json:"qoder-cn"`
+	QoderAI         []*ModelInfo `json:"qoder-ai"`
+	Meta            []*ModelInfo `json:"meta"`
+	Minimax         []*ModelInfo `json:"minimax"`
+	Floatboat       []*ModelInfo `json:"floatboat"`
+	LobsteraiServer []*ModelInfo `json:"lobsterai-server"`
 }
 
 // GetClaudeModels returns the standard Claude model definitions.
@@ -103,6 +104,14 @@ func GetMinimaxModels() []*ModelInfo {
 // GetFloatboatModels returns the FloatBoat (aoe.chat) managed-account model definitions.
 func GetFloatboatModels() []*ModelInfo {
 	return cloneModelInfos(getModels().Floatboat)
+}
+
+// GetLobsteraiServerModels returns the LobsterAI (NetEase/Youdao) managed-account
+// model definitions. The backend's live /api/models/available catalogue is
+// authoritative; this static list is only a fallback for the window before the
+// first probe (or when the probe fails).
+func GetLobsteraiServerModels() []*ModelInfo {
+	return cloneModelInfos(getModels().LobsteraiServer)
 }
 
 // GetCodeBuddyCNModels returns the standard CodeBuddy CN (Tencent) model definitions.
@@ -1163,6 +1172,8 @@ func GetStaticModelDefinitionsByChannel(channel string) []*ModelInfo {
 		return GetMinimaxModels()
 	case constant.Floatboat:
 		return GetFloatboatModels()
+	case constant.LobsteraiServer:
+		return GetLobsteraiServerModels()
 	case "deepseek-web":
 		return GetDeepSeekWebModels()
 	case constant.Xiaohuanxiong:
@@ -1231,6 +1242,7 @@ func LookupStaticModelInfo(modelID string) *ModelInfo {
 		data.Meta,
 		data.Minimax,
 		data.Floatboat,
+		data.LobsteraiServer,
 	}
 	for _, models := range allModels {
 		for _, m := range models {
