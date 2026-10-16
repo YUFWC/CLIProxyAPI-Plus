@@ -134,11 +134,12 @@ type UserInfo struct {
 
 // Client performs CodeArts credential and catalog requests.
 type Client struct {
-	httpClient *http.Client
-	stsHost    string
-	portalHost string
-	snapHost   string
-	benefitURL string
+	httpClient     *http.Client
+	stsHost        string
+	portalHost     string
+	snapHost       string
+	benefitURL     string
+	checkinHeaders http.Header
 }
 
 // NewClient creates a proxy-aware CodeArts client.
@@ -546,6 +547,9 @@ func (e *Error) Error() string {
 
 // signedRequest builds a request whose headers carry a Huawei Cloud signature.
 func (c *Client) signedRequest(ctx context.Context, method, endpoint string, body []byte, creds Credentials, extraHeaders map[string]string) (*http.Request, error) {
+	if ctx != nil && ctx.Err() != nil {
+		return nil, ctx.Err()
+	}
 	headers := map[string]string{}
 	for key, value := range extraHeaders {
 		headers[key] = value

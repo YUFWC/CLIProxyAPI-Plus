@@ -70,6 +70,7 @@ func SaveConfigPreserveComments(configFile string, cfg *Config, migrateV8 ...boo
 	pruneMappingToGeneratedKeys(original.Content[0], generated.Content[0], "oauth-model-alias")
 	pruneMappingToGeneratedKeys(original.Content[0], generated.Content[0], "oauth-request-scoped-errors")
 	pruneMappingToGeneratedKeys(original.Content[0], generated.Content[0], "oauth-settings")
+	pruneMappingToGeneratedKeys(original.Content[0], generated.Content[0], "auto-checkin")
 	replacePluginConfigsSubtree(original.Content[0], generated.Content[0])
 
 	// Merge generated into original in-place, preserving comments/order of existing nodes.
@@ -258,9 +259,12 @@ func mergeMappingPreserve(dst, src *yaml.Node, path ...[]string) {
 		} else {
 			// New key: only add if value is non-zero and not a known default
 			candidate := deepCopyNode(sv)
-			pruneKnownDefaultsInNewNode(childPath, candidate)
-			if isKnownDefaultValue(childPath, candidate) {
-				continue
+			// Check-in maps are explicit configuration, including empty provider entries.
+			if len(childPath) == 0 || childPath[0] != "auto-checkin" {
+				pruneKnownDefaultsInNewNode(childPath, candidate)
+				if isKnownDefaultValue(childPath, candidate) {
+					continue
+				}
 			}
 			dst.Content = append(dst.Content, deepCopyNode(sk), candidate)
 		}
@@ -822,10 +826,12 @@ func pruneMissingMapKeys(dstMap, srcMap *yaml.Node) {
 }
 
 // shouldPruneNestedMappingKeys reports whether keys missing from src should be pruned from dst.
-// This is strictly scoped to credential-nested mappings such as "cloak" and "headers" under
-// known credential sequence paths to prevent stale deleted keys from persisting while leaving
-// all other mappings and root sections unaffected.
+// Check-in configuration is an exact snapshot; credential-nested mappings such
+// as cloak and headers also prune stale keys. Other root sections are unaffected.
 func shouldPruneNestedMappingKeys(path []string) bool {
+	if len(path) > 0 && path[0] == "auto-checkin" {
+		return true
+	}
 	if len(path) < 2 {
 		return false
 	}

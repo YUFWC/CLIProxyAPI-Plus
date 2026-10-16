@@ -469,6 +469,7 @@ func (s *Service) prepareCoreAuthForModelRegistration(ctx context.Context, auth 
 		auth = current
 	}
 	s.cancelStaleAntigravityProbes(auth.ID)
+	s.notifyCheckinAccounts()
 	return auth
 }
 
@@ -618,6 +619,7 @@ func (s *Service) applyCoreAuthRemoval(ctx context.Context, id string) {
 	// refresh can adopt the tombstone epoch while the auth still exists and
 	// republish its cached models after the registry has been cleared.
 	s.coreManager.Remove(ctx, id)
+	s.notifyCheckinAccounts()
 	GlobalModelRegistry().UnregisterClient(id)
 	s.cancelStaleAntigravityProbes(id)
 	if strings.EqualFold(provider, "codex") {

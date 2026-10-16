@@ -132,8 +132,12 @@ func (s *Service) Run(ctx context.Context) error {
 		redisqueue.SetEnabled(true)
 	}
 
+	checkinService := s.initCheckinService()
+	serverOptions := append([]api.ServerOption(nil), s.serverOptions...)
+	serverOptions = append(serverOptions, api.WithAutoCheckinService(checkinService))
+
 	// handlers no longer depend on legacy clients; pass nil slice initially
-	s.server = api.NewServer(cfg, s.coreManager, s.accessManager, s.configPath, s.serverOptions...)
+	s.server = api.NewServer(cfg, s.coreManager, s.accessManager, s.configPath, serverOptions...)
 	s.syncPluginRuntimeConfig(ctx)
 	if homeEnabled {
 		s.configRuntimeMu.Lock()
@@ -230,6 +234,10 @@ func (s *Service) Run(ctx context.Context) error {
 		s.configRuntimeMu.Unlock()
 	}
 
+	if errStart := checkinService.Start(ctx, s.currentConfig()); errStart != nil {
+		return fmt.Errorf("cliproxy: start automatic checkin: %w", errStart)
+	}
+
 	s.registerModelRefreshCallback()
 	if !homeEnabled {
 		go s.runAntigravityModelRefresh(ctx)
@@ -270,6 +278,9 @@ func (s *Service) Shutdown(ctx context.Context) error {
 		s.homeMu.Unlock()
 		if runCancel != nil {
 			runCancel()
+		}
+		if checkinService := s.currentCheckinService(); checkinService != nil {
+			checkinService.Stop()
 		}
 
 		s.homeLifecycleMu.Lock()

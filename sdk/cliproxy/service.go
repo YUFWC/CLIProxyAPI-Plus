@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/api"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/checkin"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/home"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/homeplugins"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/pluginhost"
@@ -95,6 +96,9 @@ type Service struct {
 
 	// coreManager handles core authentication and execution.
 	coreManager *coreauth.Manager
+
+	// checkinService is protected by cfgMu and owns daily account reward jobs.
+	checkinService *checkin.Service
 
 	// cooldownStateStore persists runtime cooldown state when enabled.
 	cooldownStateStore coreauth.CooldownStateStore

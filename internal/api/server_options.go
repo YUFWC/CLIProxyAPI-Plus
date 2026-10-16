@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/checkin"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/logging"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/pluginhost"
@@ -26,6 +27,7 @@ type serverOptionConfig struct {
 	postAuthPersistHook   auth.PostAuthHook
 	pluginHost            *pluginhost.Host
 	configReloadHook      func(context.Context, *config.Config)
+	autoCheckinService    *checkin.Service
 	exampleAPIKeySafeMode bool
 }
 
@@ -125,6 +127,13 @@ func WithPluginHost(host *pluginhost.Host) ServerOption {
 func WithConfigReloadHook(hook func(context.Context, *config.Config)) ServerOption {
 	return func(cfg *serverOptionConfig) {
 		cfg.configReloadHook = hook
+	}
+}
+
+// WithAutoCheckinService connects the service-owned scheduler to management reads.
+func WithAutoCheckinService(service *checkin.Service) ServerOption {
+	return func(cfg *serverOptionConfig) {
+		cfg.autoCheckinService = service
 	}
 }
 

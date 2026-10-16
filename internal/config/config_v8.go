@@ -79,6 +79,7 @@ func buildV8Paths() []configPath {
 		{"tls", "server.tls"}, {"commercial-mode", "server.commercial-mode"}, {"discovery", "server.discovery"},
 		{"remote-management", "management"}, {"api-keys", "access.api-keys"},
 		{"credential-concurrency", "credentials.concurrency"}, {"credential-in-flight", "credentials.in-flight"},
+		{"auto-checkin", "automation.checkin"},
 		{"force-model-prefix", "routing.force-model-prefix"},
 		{"provider-models", "routing.provider-models"},
 		{"system-prompt-override", "requests.system-prompt-override"},
@@ -921,5 +922,8 @@ func ValidateV8Config(data []byte) error {
 	if errDecode := decoder.Decode(&cfg); errDecode != nil {
 		return errDecode
 	}
-	return cfg.Models.Validate()
+	if errValidate := cfg.Models.Validate(); errValidate != nil {
+		return errValidate
+	}
+	return cfg.AutoCheckin.Validate()
 }

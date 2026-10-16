@@ -42,13 +42,18 @@ func TestRegisterModelsForAuthCodeBuddyCNOAuthIgnoresAPIKeyModels(t *testing.T) 
 
 	got := modelRegistry.GetModelsForClient(authID)
 	want := registry.GetCodeBuddyCNModels()
-	if len(got) != len(want) {
-		t.Fatalf("registered models = %d, want %d", len(got), len(want))
+	wantIDs := make(map[string]bool, len(want))
+	for _, model := range want {
+		wantIDs[model.ID] = true
 	}
-	for i := range want {
-		if got[i].ID != want[i].ID {
-			t.Fatalf("registered model[%d] = %q, want %q", i, got[i].ID, want[i].ID)
+	for _, model := range got {
+		if !wantIDs[model.ID] {
+			t.Fatalf("unexpected or duplicate registered model %q", model.ID)
 		}
+		delete(wantIDs, model.ID)
+	}
+	if len(wantIDs) != 0 {
+		t.Fatalf("missing catalog models: %v", wantIDs)
 	}
 }
 
@@ -84,13 +89,18 @@ func TestRegisterModelsForAuthCodeBuddyAIOAuthIgnoresAPIKeyModels(t *testing.T) 
 
 	got := modelRegistry.GetModelsForClient(authID)
 	want := registry.GetCodeBuddyAIModels()
-	if len(got) != len(want) {
-		t.Fatalf("registered models = %d, want %d", len(got), len(want))
+	wantIDs := make(map[string]bool, len(want))
+	for _, model := range want {
+		wantIDs[model.ID] = true
 	}
-	for i := range want {
-		if got[i].ID != want[i].ID {
-			t.Fatalf("registered model[%d] = %q, want %q", i, got[i].ID, want[i].ID)
+	for _, model := range got {
+		if !wantIDs[model.ID] {
+			t.Fatalf("unexpected or duplicate registered model %q", model.ID)
 		}
+		delete(wantIDs, model.ID)
+	}
+	if len(wantIDs) != 0 {
+		t.Fatalf("missing catalog models: %v", wantIDs)
 	}
 }
 

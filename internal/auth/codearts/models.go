@@ -326,7 +326,7 @@ func normalizeModel(model *Model) (*Model, bool) {
 func (c *Client) signedGetJSON(ctx context.Context, endpoint string, creds Credentials, extraHeaders map[string]string) ([]byte, error) {
 	headers := map[string]string{"Accept": "application/json"}
 	for key, value := range extraHeaders {
-		if strings.TrimSpace(value) != "" {
+		if c.checkinHeaders != nil || strings.TrimSpace(value) != "" {
 			headers[key] = value
 		}
 	}
@@ -357,7 +357,7 @@ func (c *Client) signedGetJSON(ctx context.Context, endpoint string, creds Crede
 func (c *Client) signedPostJSON(ctx context.Context, endpoint string, creds Credentials, payload []byte, extraHeaders map[string]string) ([]byte, error) {
 	headers := map[string]string{"Content-Type": "application/json", "Accept": "application/json"}
 	for key, value := range extraHeaders {
-		if strings.TrimSpace(value) != "" {
+		if c.checkinHeaders != nil || strings.TrimSpace(value) != "" {
 			headers[key] = value
 		}
 	}

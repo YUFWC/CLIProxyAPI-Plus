@@ -611,7 +611,7 @@ func (m *Manager) refreshAuth(ctx context.Context, id string) {
 // failedAccessToken lets concurrent callers reuse a refresh that already replaced the
 // access token that produced the unauthorized response.
 func (m *Manager) refreshAuthForRequest(ctx context.Context, id, failedAccessToken string) (*Auth, error) {
-	return m.refreshAuthForRequestAtEpoch(ctx, id, failedAccessToken, 0)
+	return m.refreshAuthForRequestAtEpoch(ctx, id, failedAccessToken, 0, refreshUnconditional)
 }
 
 type forceRefreshContextKey struct{}
@@ -662,11 +662,22 @@ func (m *Manager) markRejectedAccessToken(id, failedAccessToken string) {
 	m.mu.Unlock()
 }
 
-func (m *Manager) refreshAuthForRequestAtEpoch(ctx context.Context, id, failedAccessToken string, registrationEpoch uint64) (*Auth, error) {
+type credentialRefreshMode uint8
+
+const (
+	refreshUnconditional credentialRefreshMode = iota
+	refreshIfDue
+	refreshForBackground
+)
+
+func (m *Manager) refreshAuthForRequestAtEpoch(ctx context.Context, id, failedAccessToken string, registrationEpoch uint64, mode credentialRefreshMode) (*Auth, error) {
 	if m == nil {
 		return nil, errors.New("auth manager is nil")
 	}
-	forceRefresh := isForceRefreshContext(ctx)
+	forceRefresh := mode != refreshForBackground && isForceRefreshContext(ctx)
+	if mode == refreshForBackground && isForceRefreshContext(ctx) {
+		ctx = context.WithValue(ctx, forceRefreshContextKey{}, false)
+	}
 	ctx = cliproxyexecutor.WithoutRequestProxyURL(ctx)
 	if ctx == nil {
 		ctx = context.Background()
@@ -693,6 +704,10 @@ func (m *Manager) refreshAuthForRequestAtEpoch(ctx context.Context, id, failedAc
 
 	m.mu.RLock()
 	auth := m.auths[id].Clone()
+	reserved := false
+	if job := m.refreshJobs[id]; auth != nil && job != nil {
+		reserved = auth.RegistrationEpoch == job.registrationEpoch && auth.NextRefreshAfter.Equal(job.pendingUntil)
+	}
 	var exec ProviderExecutor
 	if auth != nil {
 		// Use the same effective provider key as request execution so OpenAI-compat
@@ -700,6 +715,9 @@ func (m *Manager) refreshAuthForRequestAtEpoch(ctx context.Context, id, failedAc
 		exec, _ = m.executorLocked(executorKeyFromAuth(auth))
 	}
 	m.mu.RUnlock()
+	if errContext := ctx.Err(); errContext != nil {
+		return nil, errContext
+	}
 	if auth == nil || exec == nil {
 		return nil, errors.New("auth or executor not found")
 	}
@@ -711,6 +729,26 @@ func (m *Manager) refreshAuthForRequestAtEpoch(ctx context.Context, id, failedAc
 	}
 	if hasUnauthorizedAuthFailure(auth) && !forceRefresh {
 		return nil, errors.New("auth is unauthorized")
+	}
+	if mode != refreshUnconditional {
+		if mode == refreshForBackground && (auth.Disabled || auth.Status == StatusDisabled) {
+			return nil, errors.New("credential is disabled")
+		}
+		now := time.Now()
+		candidate := *auth
+		if reserved {
+			// The queue's pending marker is ownership, not a provider refresh backoff.
+			candidate.NextRefreshAfter = time.Time{}
+		}
+		if !m.shouldRefresh(&candidate, now) || (mode == refreshForBackground && !authHasRefreshCredential(auth)) {
+			if expiry, ok := auth.ExpirationTime(); ok && !expiry.After(now) {
+				return nil, errors.New("credential expired; refresh unavailable or deferred")
+			}
+			if expiry, ok := auth.AccessTokenExpirationTime(); ok && !expiry.After(now) {
+				return nil, errors.New("access token expired; refresh unavailable or deferred")
+			}
+			return auth, nil
+		}
 	}
 
 	// Another request may already have refreshed this credential.
@@ -910,6 +948,23 @@ func (m *Manager) refreshAuthForRequestAtEpoch(ctx context.Context, id, failedAc
 		registry.GetGlobalRegistry().ApplyClientModelProjections(id, regEpoch, targetAuth.Generation, projections)
 	}
 	return saved.Clone(), nil
+}
+
+// PrepareCredentialForBackground obtains a usable credential without forcing refresh.
+// The due check runs under the same per-account lock as foreground and automatic refresh.
+func (m *Manager) PrepareCredentialForBackground(ctx context.Context, id string, registrationEpoch uint64) (*Auth, error) {
+	auth, err := m.refreshAuthForRequestAtEpoch(ctx, id, "", registrationEpoch, refreshForBackground)
+	if err != nil {
+		return nil, err
+	}
+	now := time.Now()
+	if expiry, ok := auth.ExpirationTime(); ok && !expiry.After(now) {
+		return nil, errors.New("credential remains expired after refresh")
+	}
+	if expiry, ok := auth.AccessTokenExpirationTime(); ok && !expiry.After(now) {
+		return nil, errors.New("access token remains expired after refresh")
+	}
+	return auth, nil
 }
 
 // ForceRefreshAuth triggers an immediate synchronous refresh for the credential.

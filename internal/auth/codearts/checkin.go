@@ -11,6 +11,66 @@ import (
 	"time"
 )
 
+// NewCheckInClient creates an isolated business client. Headers apply only to
+// check-in steps, before signing, never to OAuth, identity or catalog requests.
+// Cancellation is controlled by the caller's context rather than a total timeout.
+func NewCheckInClient(httpClient *http.Client, headers http.Header) *Client {
+	client := &http.Client{}
+	if httpClient != nil {
+		*client = *httpClient
+	}
+	client.Timeout = 0
+	for name, values := range headers {
+		if !strings.EqualFold(name, "Accept-Encoding") || strings.Join(values, ",") != "" {
+			continue
+		}
+		transport := client.Transport
+		if transport == nil {
+			transport = http.DefaultTransport
+		}
+		if standard, ok := transport.(*http.Transport); ok {
+			// Automatic gzip would append a second value after the empty value was signed.
+			cloned := standard.Clone()
+			cloned.DisableCompression = true
+			client.Transport = cloned
+		}
+		break
+	}
+	client.CheckRedirect = func(_ *http.Request, _ []*http.Request) error {
+		return fmt.Errorf("codearts: check-in redirects are disabled")
+	}
+	return &Client{
+		httpClient:     client,
+		stsHost:        IAMSTSHost,
+		portalHost:     PortalHost,
+		snapHost:       SnapEngineURL,
+		benefitURL:     BenefitAPIURL,
+		checkinHeaders: headers.Clone(),
+	}
+}
+
+func (c *Client) checkInBusinessHeaders(defaults map[string]string) map[string]string {
+	headers := make(http.Header, len(defaults)+len(c.checkinHeaders))
+	for key, value := range defaults {
+		headers.Set(key, value)
+	}
+	for key, values := range c.checkinHeaders {
+		switch strings.ToLower(key) {
+		case "authorization", "host", "content-length", "connection", "proxy-connection",
+			"keep-alive", "transfer-encoding", "te", "trailer", "upgrade",
+			"proxy-authorization", "proxy-authenticate", "x-sdk-date", "x-security-token",
+			"x-sdk-content-sha256":
+			continue
+		}
+		headers.Set(key, strings.Join(values, ","))
+	}
+	merged := make(map[string]string, len(headers))
+	for key, values := range headers {
+		merged[key] = strings.Join(values, ",")
+	}
+	return merged
+}
+
 // WelfareStatus is the state of one welfare activity.
 type WelfareStatus string
 
@@ -48,8 +108,11 @@ func (f *flexString) UnmarshalJSON(data []byte) error {
 		*f = flexString(decoded)
 		return nil
 	}
-	// Numbers (and any other scalar) are taken verbatim without quotes.
-	*f = flexString(trimmed)
+	var number json.Number
+	if errUnmarshal := json.Unmarshal(data, &number); errUnmarshal != nil {
+		return fmt.Errorf("codearts: identifier must be a string or number: %w", errUnmarshal)
+	}
+	*f = flexString(number)
 	return nil
 }
 
@@ -153,10 +216,10 @@ type welfareDeliveryResponse struct {
 // ListActivities fetches the welfare activity list.
 func (c *Client) ListActivities(ctx context.Context, creds Credentials) ([]Activity, error) {
 	endpoint := strings.TrimRight(c.snapHost, "/") + WelfareDeliveryPath + "?channel=DESKTOP"
-	raw, errFetch := c.signedGetJSON(ctx, endpoint, creds, map[string]string{
+	raw, errFetch := c.signedGetJSON(ctx, endpoint, creds, c.checkInBusinessHeaders(map[string]string{
 		"Agent-Type": AgentTypePromptCenter,
 		"X-Language": "zh-cn",
-	})
+	}))
 	if errFetch != nil {
 		return nil, errFetch
 	}
@@ -205,10 +268,10 @@ func (c *Client) ClaimActivity(ctx context.Context, creds Credentials, campaignI
 	}
 
 	endpoint := strings.TrimRight(c.snapHost, "/") + WelfareClaimPath
-	raw, errClaim := c.signedPostJSON(ctx, endpoint, creds, payload, map[string]string{
+	raw, errClaim := c.signedPostJSON(ctx, endpoint, creds, payload, c.checkInBusinessHeaders(map[string]string{
 		"Agent-Type": AgentTypePromptCenter,
 		"X-Language": "zh-cn",
-	})
+	}))
 	if errClaim != nil {
 		return nil, errClaim
 	}
@@ -227,11 +290,15 @@ func (c *Client) ClaimActivity(ctx context.Context, creds Credentials, campaignI
 	if claimed.Code != nil && *claimed.Code != 0 && *claimed.Code != 200 {
 		return nil, &Error{StatusCode: http.StatusOK, Message: firstNonEmpty(claimed.Message, fmt.Sprintf("code=%d", *claimed.Code))}
 	}
+	benefitID := firstNonEmpty(claimed.Data.ID.String(), claimed.Data.UserBenefitID.String())
+	if claimed.Code == nil && benefitID == "" {
+		return nil, fmt.Errorf("codearts: claim response missing success evidence")
+	}
 
 	result := &CheckInResult{
 		Claimed:       true,
 		CampaignID:    campaignID,
-		UserBenefitID: firstNonEmpty(claimed.Data.ID.String(), claimed.Data.UserBenefitID.String()),
+		UserBenefitID: benefitID,
 	}
 	if result.UserBenefitID != "" {
 		if errConfirm := c.confirmActivity(ctx, creds, result.UserBenefitID); errConfirm != nil {
@@ -261,10 +328,10 @@ func (c *Client) confirmActivity(ctx context.Context, creds Credentials, userBen
 		return fmt.Errorf("encode confirm request: %w", errMarshal)
 	}
 	endpoint := strings.TrimRight(c.snapHost, "/") + WelfareConfirmPath
-	raw, errConfirm := c.signedPostJSON(ctx, endpoint, creds, payload, map[string]string{
+	raw, errConfirm := c.signedPostJSON(ctx, endpoint, creds, payload, c.checkInBusinessHeaders(map[string]string{
 		"Agent-Type": AgentTypePromptCenter,
 		"X-Language": "zh-cn",
-	})
+	}))
 	if errConfirm != nil {
 		return errConfirm
 	}
@@ -304,9 +371,15 @@ func (c *Client) DailyCheckIn(ctx context.Context, creds Credentials) (*CheckInR
 			result.BenefitAmount = activity.BenefitAmount
 			return result, nil
 		}
-		// Activities loaded but nothing to claim: report the already-claimed state.
+		// Only an explicit completed daily status proves today's reward was claimed.
+		hasDaily := false
 		for _, activity := range activities {
-			if activity.IsDailyCheckIn() {
+			if !activity.IsDailyCheckIn() {
+				continue
+			}
+			hasDaily = true
+			switch activity.Status {
+			case WelfareClaimed, WelfareConfirmed, WelfareConsumed:
 				return &CheckInResult{
 					AlreadyClaimed: true,
 					CampaignID:     activity.CampaignID,
@@ -314,6 +387,14 @@ func (c *Client) DailyCheckIn(ctx context.Context, creds Credentials) (*CheckInR
 				}, nil
 			}
 		}
+		if hasDaily {
+			// A daily activity can be unavailable without having been completed.
+			return &CheckInResult{}, nil
+		}
+	}
+
+	if ctx != nil && ctx.Err() != nil {
+		return nil, ctx.Err()
 	}
 
 	// Fallback: the simple developer-gateway benefit endpoint.
@@ -330,7 +411,7 @@ func (c *Client) DailyCheckIn(ctx context.Context, creds Credentials) (*CheckInR
 // claimSimpleBenefit posts to the developer-gateway benefit endpoint.
 func (c *Client) claimSimpleBenefit(ctx context.Context, creds Credentials) (*CheckInResult, error) {
 	endpoint := strings.TrimRight(c.benefitURL, "/") + BenefitClaimPath
-	raw, errClaim := c.signedPostJSON(ctx, endpoint, creds, []byte("{}"), map[string]string{"X-Language": "zh-cn"})
+	raw, errClaim := c.signedPostJSON(ctx, endpoint, creds, []byte("{}"), c.checkInBusinessHeaders(map[string]string{"X-Language": "zh-cn"}))
 	if errClaim != nil {
 		return nil, errClaim
 	}
@@ -341,7 +422,7 @@ func (c *Client) claimSimpleBenefit(ctx context.Context, creds Credentials) (*Ch
 	if errUnmarshal := json.Unmarshal(raw, &parsed); errUnmarshal != nil {
 		return nil, fmt.Errorf("codearts: invalid benefit response: %w", errUnmarshal)
 	}
-	if parsed.ErrorCode != "" && parsed.ErrorCode != "0000" {
+	if parsed.ErrorCode != "0000" {
 		return nil, &Error{StatusCode: http.StatusOK, Code: parsed.ErrorCode, Message: parsed.ErrorMsg}
 	}
 	return &CheckInResult{Claimed: true}, nil

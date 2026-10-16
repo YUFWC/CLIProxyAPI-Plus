@@ -155,6 +155,10 @@ func (s *Service) commitConfigUpdate(newCfg *config.Config) configCommit {
 		log.WithError(errValidate).Warn("rejected invalid model catalog sources")
 		return configCommit{}
 	}
+	if errValidate := newCfg.AutoCheckin.Validate(); errValidate != nil {
+		log.WithError(errValidate).Warn("rejected invalid automatic checkin configuration")
+		return configCommit{}
+	}
 	s.cfgMu.Lock()
 	s.cfg = newCfg
 	s.cfgMu.Unlock()
@@ -247,6 +251,13 @@ func (s *Service) applyConfigRuntime(ctx context.Context, commit configCommit, s
 		s.registerModelsForAuthBatch(registrationCtx, auths)
 	}
 	s.syncPluginModelRuntime(registrationCtx)
+	if checkinService := s.currentCheckinService(); checkinService != nil {
+		s.configUpdateMu.Lock()
+		if s.configSequence == commit.sequence && ctx.Err() == nil {
+			checkinService.ApplyConfig(cfg)
+		}
+		s.configUpdateMu.Unlock()
+	}
 	return ctx.Err() == nil
 }
 

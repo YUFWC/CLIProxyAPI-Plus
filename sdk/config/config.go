@@ -16,6 +16,9 @@ type ModelCatalogs = internalconfig.ModelCatalogs
 
 type ClientConfig = internalconfig.ClientConfig
 type CodexClientConfig = internalconfig.CodexClientConfig
+type AutoCheckinConfig = internalconfig.AutoCheckinConfig
+type CheckinProviderConfig = internalconfig.CheckinProviderConfig
+type CheckinWindow = internalconfig.CheckinWindow
 type StreamingConfig = internalconfig.StreamingConfig
 type ClaudeCodeConfig = internalconfig.ClaudeCodeConfig
 type TLSConfig = internalconfig.TLSConfig

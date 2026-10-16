@@ -92,6 +92,8 @@ retain the corresponding business operation's fields.
 | `/requests/api-call` | POST | Make an authenticated upstream call. |
 | `/routing/cooldown/reset` | POST | Clear credential cooldown. |
 | `/routing/model-definitions/<channel>` | GET | Get model definitions. |
+| `/automation/checkin/providers` | GET | List supported check-in protocols, defaults, and protected request headers. |
+| `/automation/checkin/status?provider=<id>` | GET | Read in-memory daily plans and results, optionally filtered by provider. |
 | `/observability/logs` | GET, DELETE | Read or clear application logs. |
 | `/observability/logs/errors` | GET | List error-log files. |
 | `/observability/logs/errors/<name>` | GET | Download an error-log file. |
@@ -120,6 +122,62 @@ retain the corresponding business operation's fields.
 | `/plugins/store` | GET | List the plugin store. |
 | `/plugins/store/<id>/install` | POST | Install or update a plugin. |
 | `/plugins/<id>/quota` | GET, POST, DELETE | Read, fetch, or reset plugin quota. |
+
+## Automatic check-in
+
+Daily rewards are opt-in under `automation.checkin.providers`. Supported IDs are
+`codearts`, `codebuddy-cn` (WorkBuddy), and `trae`; missing providers are disabled.
+The **Control → Automatic checkin** page edits this section. Home execution nodes
+do not run this scheduler; their management endpoints remain disabled.
+
+Read the stored section with `GET /config/automation/checkin`; an omitted section
+returns 404. Replace one provider with
+`PUT /config/automation/checkin/providers/codebuddy-cn`, using the direct JSON body:
+
+```json
+{
+  "enabled": false,
+  "timezone": "Asia/Shanghai",
+  "window": { "start": "00:10", "end": "03:10" },
+  "headers": { "UID": "${meta.uid}" }
+}
+```
+
+The UID header is a template example, not a required header for every provider.
+`${meta.uid}` reads the nested `meta.uid` from each current credential snapshot;
+it is never expanded in the browser or persisted as a rendered value. Scalar
+values and text composition are supported; `$${` escapes a literal `${`.
+Missing/null/non-scalar fields block only the affected account. Authentication,
+signature and transport headers are system-owned and cannot be overridden.
+Custom headers are confined to check-in/verification requests and redirects are
+not followed. Use a provider-level PUT to remove omitted headers; PATCH merges maps.
+
+Windows are same-day, half-open `[start, end)` intervals. H:MM and HH:MM are accepted;
+24:00 is valid only as the end. Timezones use IANA names. Each account independently
+draws a daily time. Startup inside a window draws from the remaining interval;
+startup outside it queues immediate recovery, including times before the start.
+Normal midnight rollover keeps the configured random window instead of signing
+in early. Completion is in memory only; an upstream-confirmed already-done state
+also completes the day. Failed attempts are not retried on every scheduler tick.
+
+A successful provider-level replacement adds `config_fingerprint` to the normal
+save response. Compare it with the provider's `config_fingerprint` in the status
+response to distinguish persisted configuration from asynchronous runtime application.
+
+`GET /automation/checkin/providers` returns `{ "providers": [...] }`, with `id`,
+`name`, `defaults`, and `protected_headers` per entry. Status returns
+`config_fingerprint`, optional `disabled_reason`, `providers`, and `accounts`.
+Each provider has `id`, `enabled`, `timezone`, `date`, and `config_fingerprint`.
+Account entries contain `auth_id`, a safe `account` display name, `provider`,
+`date`, `phase`, `trigger`, `outcome`, `completed`, optional `scheduled_at`,
+`started_at`, `finished_at`, and safe `error`/`warning` codes. Timestamp values
+are RFC3339. No raw credential metadata or rendered request headers are returned.
+
+Phases are `scheduled`, `queued`, `running`, `done`, `failed`, or `blocked`.
+Outcomes distinguish `success`, `already_done`, `unavailable`, `failed`, and
+`blocked`; only the first two set `completed=true`. A business-unavailable result
+uses the failed phase without claiming success. Cross-midnight results do not
+complete another business date without matching upstream date evidence.
 
 ## OAuth
 

@@ -41,6 +41,9 @@ type Config struct {
 	// Plugins configures dynamic plugin discovery and per-plugin settings.
 	Plugins PluginsConfig `yaml:"plugins" json:"plugins"`
 
+	// AutoCheckin configures opt-in background daily rewards.
+	AutoCheckin AutoCheckinConfig `yaml:"auto-checkin,omitempty" json:"auto-checkin"`
+
 	// AuthDir is the directory where authentication token files are stored.
 	AuthDir string `yaml:"auth-dir" json:"-"`
 

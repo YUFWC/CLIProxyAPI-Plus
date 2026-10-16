@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/checkin"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/clienterror"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
 	"gopkg.in/yaml.v3"
@@ -191,7 +192,11 @@ func (h *Handler) ConfigV8(c *gin.Context) {
 	h.cfg = next
 	snapshot := h.reloadSnapshotConfigLocked()
 	h.reloadConfigAfterManagementSaveAsync(c.Request.Context(), snapshot)
-	c.JSON(http.StatusOK, gin.H{"status": "ok", "config-version": 8})
+	response := gin.H{"status": "ok", "config-version": 8}
+	if len(parts) == 4 && parts[0] == "automation" && parts[1] == "checkin" && parts[2] == "providers" {
+		response["config_fingerprint"] = checkin.Fingerprint(next.AutoCheckin.Providers[parts[3]].Effective())
+	}
+	c.JSON(http.StatusOK, response)
 }
 
 var v8ICEServersPath = []string{"oauth", "providers", "codex", "live-media-relay", "ice-servers"}

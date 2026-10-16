@@ -15,6 +15,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/buildinfo"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/checkin"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/pluginhost"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/pluginstore"
@@ -48,6 +49,7 @@ type Handler struct {
 	attemptsMu              sync.Mutex
 	failedAttempts          map[string]*attemptInfo // keyed by client IP
 	authManager             *coreauth.Manager
+	autoCheckinService      *checkin.Service
 	tokenStore              coreauth.Store
 	localPassword           string
 	allowRemoteOverride     bool

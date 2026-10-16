@@ -100,3 +100,5 @@ __pycache__/
 /CLAUDE.md
 /run.dev.sh
 .run/
+/skills
+/skills-lock.json

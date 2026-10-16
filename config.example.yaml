@@ -110,6 +110,34 @@ access:
     - "your-api-key-2"
     - "your-api-key-3"
 
+# Optional daily provider check-in. Omitted providers remain disabled.
+# Each credential gets an independent random time in [start, end), in this timezone.
+# On startup, unknown accounts outside the window are queued immediately (even before start).
+# Completion is kept in memory only. Failures are not retried on every scheduling tick.
+# Header templates read the current credential JSON root; missing values block that account.
+# Authentication/signature and transport headers cannot be overridden. Home workers do not check in.
+# automation:
+#   checkin:
+#     providers:
+#       codearts:
+#         enabled: false
+#         timezone: Asia/Shanghai
+#         window: { start: "00:10", end: "03:10" }
+#         headers: {}
+#       codebuddy-cn: # WorkBuddy; not codebuddy-ai
+#         enabled: false
+#         timezone: Asia/Shanghai
+#         window: { start: "00:10", end: "03:10" }
+#         headers: {}
+#         # If this account's JSON contains {"meta":{"uid":"..."}}:
+#         # headers: { UID: "${meta.uid}" }
+#       trae:
+#         enabled: false
+#         timezone: Asia/Shanghai
+#         window: { start: "00:10", end: "03:10" }
+#         headers: {}
+#         # Requires an existing compatible numeric device ID; no device ID is generated.
+
 # Optional credential concurrency and observation contracts.
 
 # credentials:

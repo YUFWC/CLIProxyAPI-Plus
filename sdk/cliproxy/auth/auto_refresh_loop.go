@@ -101,7 +101,7 @@ func (l *authAutoRefreshLoop) worker(ctx context.Context) {
 				continue
 			}
 			if l.manager.beginRefreshJob(ctx, job) {
-				_, _ = l.manager.refreshAuthForRequestAtEpoch(ctx, job.id, "", job.registrationEpoch)
+				_, _ = l.manager.refreshAuthForRequestAtEpoch(ctx, job.id, "", job.registrationEpoch, refreshIfDue)
 			}
 			l.manager.finishRefreshJob(job, time.Time{}, false)
 		}
