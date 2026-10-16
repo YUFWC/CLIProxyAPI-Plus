@@ -4945,6 +4945,32 @@
   ],
   "codebuddy-cn": [
     {
+      "id": "step-5-preview",
+      "object": "model",
+      "created": 1761148800,
+      "owned_by": "tencent",
+      "type": "codebuddy-cn",
+      "display_name": "step-5-preview",
+      "description": "step-5-preview via CodeBuddy CN",
+      "context_length": 1000000,
+      "max_completion_tokens": 64000,
+      "thinking": {
+        "zero_allowed": true,
+        "levels": [
+          "low",
+          "medium",
+          "high"
+        ]
+      },
+      "supportedInputModalities": [
+        "text",
+        "image"
+      ],
+      "supportedOutputModalities": [
+        "text"
+      ]
+    },
+    {
       "id": "hy4-preview",
       "object": "model",
       "created": 1761148800,
