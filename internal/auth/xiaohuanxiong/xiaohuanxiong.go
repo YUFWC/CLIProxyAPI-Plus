@@ -31,6 +31,7 @@ import (
 
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/util"
+	log "github.com/sirupsen/logrus"
 )
 
 const (
@@ -435,11 +436,19 @@ func (c *Client) FetchPointsBalance(ctx context.Context, accessToken string) (*P
 		return nil, fmt.Errorf("xiaohuanxiong: create balance request: %w", errReq)
 	}
 	applyHeaders(req, accessToken)
-	resp, errDo := c.httpClient.Do(req)
+	// The client timeout is for credential acquisition. An established account
+	// balance read follows the request context instead of a second fixed timer.
+	httpClient := *c.httpClient
+	httpClient.Timeout = 0
+	resp, errDo := httpClient.Do(req)
 	if errDo != nil {
 		return nil, fmt.Errorf("xiaohuanxiong: balance request failed: %w", errDo)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if errClose := resp.Body.Close(); errClose != nil {
+			log.Debugf("xiaohuanxiong: close balance response: %v", errClose)
+		}
+	}()
 	data, errRead := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 	if errRead != nil {
 		return nil, fmt.Errorf("xiaohuanxiong: read balance response: %w", errRead)
