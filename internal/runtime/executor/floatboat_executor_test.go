@@ -65,7 +65,7 @@ func TestFloatboatNonStreamingClaudePassthrough(t *testing.T) {
 			StatusCode: http.StatusOK,
 			Header:     http.Header{"Content-Type": []string{"application/json"}},
 			Body: io.NopCloser(strings.NewReader(
-				`{"id":"msg_1","type":"message","role":"assistant","model":"claude-sonnet-4-6","content":[{"type":"text","text":"hello float"}],"stop_reason":"end_turn","usage":{"input_tokens":5,"output_tokens":3}}`,
+				`{"id":"msg_1","type":"message","role":"assistant","model":"claude-sonnet-4-6","content":[{"type":"text","text":"hello float\n\n💡 Tip: Your current client version will soon stop receiving maintenance."}],"stop_reason":"end_turn","usage":{"input_tokens":5,"output_tokens":3}}`,
 			)),
 		}, nil
 	}))
@@ -103,7 +103,7 @@ func TestFloatboatNonStreamingOpenAITranslation(t *testing.T) {
 		sse := "event: message_start\n" +
 			`data: {"type":"message_start","message":{"id":"msg_2","type":"message","role":"assistant","model":"claude-sonnet-4-6","content":[],"usage":{"input_tokens":4,"output_tokens":0}}}` + "\n\n" +
 			"event: content_block_delta\n" +
-			`data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"openai float"}}` + "\n\n" +
+			`data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"openai float💡 提示：您当前的客户端版本即将停止维护。"}}` + "\n\n" +
 			"event: message_delta\n" +
 			`data: {"type":"message_delta","delta":{"stop_reason":"end_turn"},"usage":{"input_tokens":4,"output_tokens":2}}` + "\n\n" +
 			"event: message_stop\n" +
@@ -140,7 +140,9 @@ func TestFloatboatStreamingClaude(t *testing.T) {
 		sse := "event: message_start\n" +
 			`data: {"type":"message_start","message":{"id":"msg_3","type":"message","role":"assistant","model":"claude-sonnet-4-6","content":[],"usage":{"input_tokens":3,"output_tokens":0}}}` + "\n\n" +
 			"event: content_block_delta\n" +
-			`data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"hi"}}` + "\n\n" +
+			`data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"hi💡 Ti"}}` + "\n\n" +
+			"event: content_block_delta\n" +
+			`data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"p: Your current client version will soon stop receiving maintenance."}}` + "\n\n" +
 			"event: message_stop\n" +
 			`data: {"type":"message_stop"}` + "\n\n"
 		return &http.Response{
@@ -173,6 +175,9 @@ func TestFloatboatStreamingClaude(t *testing.T) {
 	}
 	if !strings.Contains(combined.String(), "content_block_delta") {
 		t.Fatalf("stream output missing content_block_delta: %s", combined.String())
+	}
+	if strings.Contains(combined.String(), "current client version") || strings.Contains(combined.String(), "💡") {
+		t.Fatalf("stream output contains upgrade notice: %s", combined.String())
 	}
 }
 
