@@ -226,6 +226,11 @@ func (e *FloatboatExecutor) Execute(ctx context.Context, auth *cliproxyauth.Auth
 	helps.AppendAPIResponseChunk(ctx, e.cfg, data)
 	reporter.ObserveResponseModel(data)
 	reporter.Publish(ctx, helps.ParseClaudeUsage(data))
+	if upstreamStream {
+		data = helps.TruncateFloatboatNoticeSSE(data)
+	} else {
+		data = helps.TruncateFloatboatNotice(data)
+	}
 	var param any
 	out := sdktranslator.TranslateNonStream(ctx, to, responseFormat, req.Model, opts.OriginalRequest, body, data, &param)
 	if responseFormat == sdktranslator.FormatOpenAIResponse {
@@ -311,23 +316,54 @@ func (e *FloatboatExecutor) ExecuteStream(ctx context.Context, auth *cliproxyaut
 		scanner.Buffer(nil, 52_428_800)
 		var param any
 		var streamUsage helps.StreamUsageBuffer
+		var noticeFilter helps.FloatboatNoticeStreamFilter
+		var frame bytes.Buffer
 		defer streamUsage.Publish(ctx, reporter)
+		emitFrame := func(raw []byte) bool {
+			for _, filtered := range noticeFilter.ProcessFrame(raw) {
+				for _, eventLine := range bytes.Split(bytes.TrimSuffix(filtered, []byte("\n")), []byte("\n")) {
+					chunks := sdktranslator.TranslateStream(ctx, to, responseFormat, req.Model, opts.OriginalRequest, body, bytes.Clone(eventLine), &param)
+					if responseFormat == sdktranslator.FormatOpenAIResponse {
+						for i := range chunks {
+							chunks[i] = helps.EnsureResponsesUsageDetails(chunks[i])
+						}
+					}
+					for i := range chunks {
+						select {
+						case out <- cliproxyexecutor.StreamChunk{Payload: chunks[i]}:
+						case <-ctx.Done():
+							return false
+						}
+					}
+				}
+			}
+			return true
+		}
 		for scanner.Scan() {
 			line := scanner.Bytes()
 			helps.AppendAPIResponseChunk(ctx, e.cfg, line)
 			reporter.ObserveResponseModel(line)
 			streamUsage.ObserveClaudeStream(line)
-			chunks := sdktranslator.TranslateStream(ctx, to, responseFormat, req.Model, opts.OriginalRequest, body, bytes.Clone(line), &param)
-			if responseFormat == sdktranslator.FormatOpenAIResponse {
-				for i := range chunks {
-					chunks[i] = helps.EnsureResponsesUsageDetails(chunks[i])
-				}
-			}
-			for i := range chunks {
-				select {
-				case out <- cliproxyexecutor.StreamChunk{Payload: chunks[i]}:
-				case <-ctx.Done():
+			frame.Write(line)
+			frame.WriteByte('\n')
+			if len(line) == 0 {
+				if !emitFrame(frame.Bytes()) {
 					return
+				}
+				frame.Reset()
+			}
+		}
+		if frame.Len() > 0 && !emitFrame(frame.Bytes()) {
+			return
+		}
+		if pending := noticeFilter.Flush(); len(pending) > 0 {
+			for _, eventLine := range bytes.Split(bytes.TrimSuffix(pending, []byte("\n")), []byte("\n")) {
+				for _, chunk := range sdktranslator.TranslateStream(ctx, to, responseFormat, req.Model, opts.OriginalRequest, body, bytes.Clone(eventLine), &param) {
+					select {
+					case out <- cliproxyexecutor.StreamChunk{Payload: chunk}:
+					case <-ctx.Done():
+						return
+					}
 				}
 			}
 		}
