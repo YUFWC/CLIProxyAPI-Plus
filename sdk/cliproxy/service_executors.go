@@ -330,6 +330,8 @@ func (s *Service) registerExecutorForAuth(a *coreauth.Auth, forceReplace bool) {
 		s.coreManager.RegisterExecutor(executor.NewFloatboatExecutor(cfg))
 	case constant.LobsteraiServer:
 		s.coreManager.RegisterExecutor(executor.NewLobsteraiServerExecutor(cfg))
+	case constant.Loomy:
+		s.coreManager.RegisterExecutor(executor.NewLoomyExecutor(cfg))
 	case constant.Minimax:
 		s.coreManager.RegisterExecutor(executor.NewMinimaxExecutor(cfg))
 	case constant.MinimaxCN:

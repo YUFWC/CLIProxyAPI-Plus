@@ -1138,6 +1138,7 @@ func cloneModelInfos(models []*ModelInfo) []*ModelInfo {
 //   - antigravity
 //   - xai
 //   - xiaohuanxiong
+//   - loomy
 //   - codearts
 //   - devin
 //   - meta
@@ -1178,6 +1179,8 @@ func GetStaticModelDefinitionsByChannel(channel string) []*ModelInfo {
 		return GetDeepSeekWebModels()
 	case constant.Xiaohuanxiong:
 		return GetXiaohuanxiongModels()
+	case constant.Loomy:
+		return GetLoomyModels()
 	case constant.CodeArts:
 		return GetCodeArtsModels()
 	case constant.QoderCN:
@@ -1242,6 +1245,11 @@ func LookupStaticModelInfo(modelID string) *ModelInfo {
 		data.Minimax,
 		data.Floatboat,
 		data.LobsteraiServer,
+		// Loomy is listed last so its fallback catalog never shadows an existing
+		// provider's entry: its measured catalogue reuses vendor model names
+		// (for example MiniMax-M3) with different capacities, and provider-aware
+		// lookups reach it through LookupStaticModelInfoByChannel.
+		GetLoomyModels(),
 	}
 	for _, models := range allModels {
 		for _, m := range models {

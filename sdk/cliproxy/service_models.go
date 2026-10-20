@@ -194,6 +194,11 @@ func (s *Service) registerModelsForAuthWithConfigAndCache(ctx context.Context, c
 	case constant.LobsteraiServer:
 		models = registry.GetLobsteraiServerModels()
 		models = applyExcludedModels(models, excluded)
+	case constant.Loomy:
+		// The business gateway owns the real per-account catalogue; this is the
+		// fallback list published until (or unless) the probe succeeds.
+		models = registry.GetLoomyModels()
+		models = applyExcludedModels(models, excluded)
 	case "codebuddy-cn":
 		models = registry.GetCodeBuddyCNModels()
 		if entry := s.resolveConfigCodeBuddyCNKey(a); entry != nil {
@@ -450,6 +455,9 @@ func (s *Service) registerModelsForAuthWithConfigAndCache(ctx context.Context, c
 			// only a fallback, so refresh it in the background.
 			s.asyncProbeLobsteraiServerCatalogue(ctx, a, key)
 		}
+		if strings.EqualFold(strings.TrimSpace(a.Provider), constant.Loomy) {
+			s.asyncProbeLoomyCatalogue(ctx, a, key)
+		}
 		return
 	}
 
@@ -462,6 +470,9 @@ func (s *Service) registerModelsForAuthWithConfigAndCache(ctx context.Context, c
 	}
 	if provider == constant.LobsteraiServer {
 		s.asyncProbeLobsteraiServerCatalogue(ctx, a, key)
+	}
+	if provider == constant.Loomy {
+		s.asyncProbeLoomyCatalogue(ctx, a, key)
 	}
 }
 

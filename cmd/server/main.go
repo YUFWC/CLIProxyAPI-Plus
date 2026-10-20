@@ -125,6 +125,7 @@ func main() {
 	var clineLogin bool
 	var floatboatLogin bool
 	var lobsteraiServerLogin bool
+	var loomyLogin bool
 	var discoverGateways bool
 	var discoverTimeout int
 	var discoverJSON bool
@@ -164,6 +165,7 @@ func main() {
 	flag.BoolVar(&clineLogin, "cline-login", false, "Login to Cline (cline.bot) using OAuth")
 	flag.BoolVar(&floatboatLogin, "floatboat-login", false, "Login to FloatBoat (aoe.chat) using the desktop deep-link flow")
 	flag.BoolVar(&lobsteraiServerLogin, "lobsterai-server-login", false, "Login to LobsterAI (NetEase/Youdao) using OAuth")
+	flag.BoolVar(&loomyLogin, "loomy-login", false, "Login to Loomy (iFlytek) using a phone SMS code")
 	flag.BoolVar(&discoverGateways, "discover", false, "Discover local AI gateways and CPA instances on the LAN")
 	flag.IntVar(&discoverTimeout, "discover-timeout", 3, "Timeout in seconds for LAN discovery (default 3s)")
 	flag.BoolVar(&discoverJSON, "discover-json", false, "Output discovered gateways in JSON format")
@@ -676,7 +678,7 @@ func main() {
 		CallbackPort: oauthCallbackPort,
 	}
 
-	commandMode := vertexImport != "" || siwcBind != "" || antigravityLogin || codexLogin || codexDeviceLogin || claudeLogin || kimiLogin || kimiAILogin || codeBuddyCNLogin || codeBuddyAILogin || minimaxLogin || minimaxCNLogin || qoderCNLogin || qoderAILogin || xaiLogin || devinLogin || metaLogin || clineLogin || floatboatLogin || lobsteraiServerLogin
+	commandMode := vertexImport != "" || siwcBind != "" || antigravityLogin || codexLogin || codexDeviceLogin || claudeLogin || kimiLogin || kimiAILogin || codeBuddyCNLogin || codeBuddyAILogin || minimaxLogin || minimaxCNLogin || qoderCNLogin || qoderAILogin || xaiLogin || devinLogin || metaLogin || clineLogin || floatboatLogin || lobsteraiServerLogin || loomyLogin
 	cloudConfigMissing := isCloudDeploy && !configFileExists
 	homeMode := configLoadedFromHome || (cfg != nil && cfg.Home.Enabled)
 	exampleAPIKeySafeMode := shouldEnableExampleAPIKeySafeMode(cfg, commandMode, tuiMode, standalone, cloudConfigMissing, homeMode)
@@ -777,6 +779,8 @@ func main() {
 		cmd.DoFloatboatLogin(cfg, options)
 	} else if lobsteraiServerLogin {
 		cmd.DoLobsteraiServerLogin(cfg, options)
+	} else if loomyLogin {
+		cmd.DoLoomyLogin(cfg, options)
 	} else {
 		// In cloud deploy mode without config file, just wait for shutdown signals
 		if isCloudDeploy && !configFileExists {
@@ -991,7 +995,7 @@ func argvFlagConsumesValue(name string) bool {
 	switch name {
 	case "codex-login", "codex-device-login", "claude-login", "no-browser",
 		"antigravity-login", "kimi-login", "kimi-ai-login", "xai-login", "devin-login", "meta-login", "cline-login",
-		"floatboat-login", "lobsterai-server-login",
+		"floatboat-login", "lobsterai-server-login", "loomy-login",
 		"discover", "discover-json", "home-disable-cluster-discovery",
 		"tui", "standalone", "local-model":
 		return false

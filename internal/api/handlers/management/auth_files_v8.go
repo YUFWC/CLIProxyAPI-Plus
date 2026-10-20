@@ -52,6 +52,14 @@ func (h *Handler) StartOAuthV8(c *gin.Context) {
 		h.RequestFloatboatToken(c)
 	case "lobsterai-server":
 		h.RequestLobsteraiServerToken(c)
+	case "loomy":
+		// Loomy signs in with a phone SMS code rather than a URL, so the shared
+		// auth-url contract cannot start it. Point the caller at the two steps.
+		c.JSON(http.StatusBadRequest, gin.H{
+			"status": "error",
+			"error":  "loomy uses the SMS flow: POST /v8/management/loomy-sms-code then POST /v8/management/loomy-login",
+			"flow":   "sms",
+		})
 	default:
 		if !h.ServePluginAuthURL(c) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "provider_not_found"})

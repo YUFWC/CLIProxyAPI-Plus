@@ -14,6 +14,7 @@ import (
 	floatboatauth "github.com/router-for-me/CLIProxyAPI/v8/internal/auth/floatboat"
 	kimiauth "github.com/router-for-me/CLIProxyAPI/v8/internal/auth/kimi"
 	lobsteraiserverauth "github.com/router-for-me/CLIProxyAPI/v8/internal/auth/lobsteraiserver"
+	loomyauth "github.com/router-for-me/CLIProxyAPI/v8/internal/auth/loomy"
 	minimaxauth "github.com/router-for-me/CLIProxyAPI/v8/internal/auth/minimax"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/constant"
@@ -281,6 +282,21 @@ func synthesizeFileAuths(ctx *SynthesisContext, fullPath string, data []byte) ([
 			if key, _ := metadata["api_key"].(string); strings.TrimSpace(key) != "" {
 				a.Attributes["api_key"] = strings.TrimSpace(key)
 			} else if token, _ := metadata["access_token"].(string); strings.TrimSpace(token) != "" {
+				a.Attributes["access_token"] = strings.TrimSpace(token)
+			}
+		}
+	}
+	if provider == constant.Loomy {
+		a.Attributes[coreauth.AttributeAuthKind] = coreauth.AuthKindOAuth
+		baseURL, _ := metadata["base_url"].(string)
+		baseURL = strings.TrimSpace(baseURL)
+		if baseURL == "" {
+			baseURL = loomyauth.APIBase
+		}
+		a.Attributes["base_url"] = baseURL
+		// The session authorizes both inference and business reads.
+		if strings.TrimSpace(a.Attributes["access_token"]) == "" {
+			if token, _ := metadata["access_token"].(string); strings.TrimSpace(token) != "" {
 				a.Attributes["access_token"] = strings.TrimSpace(token)
 			}
 		}

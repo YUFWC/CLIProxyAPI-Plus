@@ -243,6 +243,7 @@ func (s *Service) Run(ctx context.Context) error {
 		go s.runAntigravityModelRefresh(ctx)
 		go s.runFloatboatModelRefresh(ctx)
 		go s.runLobsteraiServerModelRefresh(ctx)
+		go s.runLoomyModelRefresh(ctx)
 	}
 
 	select {

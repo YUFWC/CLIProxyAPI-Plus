@@ -91,4 +91,11 @@ const (
 	// inference to that same origin's /api/proxy gateway, which accepts OpenAI
 	// Chat Completions, OpenAI Responses and Anthropic Messages per model.
 	LobsteraiServer = "lobsterai-server"
+
+	// Loomy represents the iFlytek Loomy (讯飞 Loomy) managed-account provider
+	// identifier. It signs in with a phone SMS code (or WeChat QR scan) against
+	// the iFlytek CAccount service and speaks OpenAI Chat Completions to the
+	// business gateway at loomyad.xunfei.cn. Its session has no refresh
+	// counterpart; refresh only probes liveness.
+	Loomy = "loomy"
 )

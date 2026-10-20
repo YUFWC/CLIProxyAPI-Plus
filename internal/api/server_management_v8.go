@@ -49,6 +49,7 @@ func (s *Server) registerManagementV8Routes() {
 	v8.GET("/floatboat-quota", s.mgmt.GetFloatboatQuota)
 	v8.GET("/xiaohuanxiong-quota", s.mgmt.GetXiaohuanxiongQuota)
 	v8.GET("/lobsterai-server-quota", s.mgmt.GetLobsteraiServerQuota)
+	v8.GET("/loomy-quota", s.mgmt.GetLoomyQuota)
 	v8.GET("/codearts-quota", s.mgmt.GetCodeArtsQuota)
 	v8.GET("/qoder-cn-quota", s.mgmt.GetQoderCNQuota)
 	v8.GET("/qoder-ai-quota", s.mgmt.GetQoderCNQuota)
@@ -87,6 +88,10 @@ func (s *Server) registerManagementV8Routes() {
 	// Web-session login persists a credential like any other acquisition flow, so
 	// it belongs to the same authenticated v8 surface the panel calls.
 	v8.POST("/web-login/qwen-web", s.mgmt.LoginQwenWeb)
+	// Loomy signs in with a phone SMS code rather than a URL, so its two steps
+	// are separate endpoints instead of the shared oauth/auth-url contract.
+	v8.POST("/loomy-sms-code", s.mgmt.RequestLoomySMSCode)
+	v8.POST("/loomy-login", s.mgmt.PostLoomyLogin)
 
 	v8.GET("/plugins", s.mgmt.ListPlugins)
 	v8.DELETE("/plugins/:id", s.mgmt.DeletePlugin)

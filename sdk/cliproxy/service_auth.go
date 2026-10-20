@@ -39,6 +39,7 @@ func newDefaultAuthManager() *sdkAuth.Manager {
 		sdkAuth.NewClineAuthenticator(),
 		sdkAuth.NewFloatboatAuthenticator(),
 		sdkAuth.NewLobsteraiServerAuthenticator(),
+		sdkAuth.NewLoomyAuthenticator(),
 	)
 }
 
