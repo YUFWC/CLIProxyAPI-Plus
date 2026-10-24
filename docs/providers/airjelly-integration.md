@@ -16,7 +16,12 @@ Set these environment variables on the proxy process:
   Keep it in a private environment file; never put it in config.yaml, an auth
   file, logs, or source control. Client updates may rotate it.
 
-The management UI offers Google OAuth with PKCE and email/password login.
+The management UI offers Google OAuth with PKCE, email/password login, and
+email registration. As in the desktop client, registration may return a session
+immediately or require an emailed signup code. The UI can verify or resend that
+code, then saves the resulting session. A first Google sign-in also creates an
+AirJelly account through Supabase when the email is new. After sign-in, the
+backend initializes the AirJelly user profile if it is absent.
 Google returns to the desktop client's `http://localhost:19877` callback. Copy
 the complete callback URL from the browser address bar and paste it into the
 AirJelly card. The backend keeps the PKCE verifier for ten minutes and consumes

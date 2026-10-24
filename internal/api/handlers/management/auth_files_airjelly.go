@@ -115,17 +115,89 @@ func (h *Handler) LoginAirJellyPassword(c *gin.Context) {
 	h.saveAirJellySession(c, session)
 }
 
+func (h *Handler) SignUpAirJelly(c *gin.Context) {
+	c.Header("Cache-Control", "no-store")
+	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 16<<10)
+	var body struct {
+		Email    string `json:"email"`
+		Password string `json:"password"`
+	}
+	if err := c.ShouldBindJSON(&body); err != nil || strings.TrimSpace(body.Email) == "" || body.Password == "" {
+		c.JSON(400, gin.H{"error": "email and password are required"})
+		return
+	}
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 60*time.Second)
+	defer cancel()
+	session, needsConfirmation, err := airjelly.SignUp(ctx, airJellyHTTPClient(ctx, h), strings.TrimSpace(body.Email), body.Password)
+	if err != nil {
+		c.JSON(502, gin.H{"error": err.Error()})
+		return
+	}
+	if needsConfirmation {
+		c.JSON(200, gin.H{"status": "confirmation_required", "provider": airjelly.Provider})
+		return
+	}
+	h.saveAirJellySession(c, session)
+}
+
+func (h *Handler) VerifyAirJellySignUp(c *gin.Context) {
+	c.Header("Cache-Control", "no-store")
+	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 16<<10)
+	var body struct {
+		Email string `json:"email"`
+		Code  string `json:"code"`
+	}
+	if err := c.ShouldBindJSON(&body); err != nil || strings.TrimSpace(body.Email) == "" || strings.TrimSpace(body.Code) == "" {
+		c.JSON(400, gin.H{"error": "email and verification code are required"})
+		return
+	}
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 60*time.Second)
+	defer cancel()
+	session, err := airjelly.VerifySignUpOTP(ctx, airJellyHTTPClient(ctx, h), strings.TrimSpace(body.Email), strings.TrimSpace(body.Code))
+	if err != nil {
+		c.JSON(502, gin.H{"error": err.Error()})
+		return
+	}
+	h.saveAirJellySession(c, session)
+}
+
+func (h *Handler) ResendAirJellySignUpCode(c *gin.Context) {
+	c.Header("Cache-Control", "no-store")
+	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 16<<10)
+	var body struct {
+		Email string `json:"email"`
+	}
+	if err := c.ShouldBindJSON(&body); err != nil || strings.TrimSpace(body.Email) == "" {
+		c.JSON(400, gin.H{"error": "email is required"})
+		return
+	}
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 60*time.Second)
+	defer cancel()
+	if err := airjelly.ResendSignUpOTP(ctx, airJellyHTTPClient(ctx, h), strings.TrimSpace(body.Email)); err != nil {
+		c.JSON(502, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(200, gin.H{"status": "confirmation_required", "provider": airjelly.Provider})
+}
+
 func (h *Handler) saveAirJellySession(c *gin.Context, session *airjelly.Session) {
 	record := sdkauth.AirJellySessionRecord(session)
 	if record == nil {
 		c.JSON(502, gin.H{"error": "invalid session"})
 		return
 	}
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 10*time.Second)
+	defer cancel()
+	profileErr := airjelly.EnsureProfile(ctx, airJellyHTTPClient(ctx, h), session)
 	if _, err := h.saveTokenRecord(c.Request.Context(), record); err != nil {
 		c.JSON(500, gin.H{"error": "could not save AirJelly authentication"})
 		return
 	}
-	c.JSON(200, gin.H{"status": "ok", "provider": airjelly.Provider, "id": record.FileName, "label": record.Label})
+	response := gin.H{"status": "ok", "provider": airjelly.Provider, "id": record.FileName, "label": record.Label}
+	if profileErr != nil {
+		response["profile_warning"] = "profile initialization needs a retry in the AirJelly client"
+	}
+	c.JSON(200, response)
 }
 
 func (h *Handler) GetAirJellyQuota(c *gin.Context) {

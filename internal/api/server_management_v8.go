@@ -96,6 +96,9 @@ func (s *Server) registerManagementV8Routes() {
 	v8.POST("/airjelly/oauth/start", s.mgmt.StartAirJellyOAuth)
 	v8.POST("/airjelly/oauth/complete", s.mgmt.CompleteAirJellyOAuth)
 	v8.POST("/airjelly/login", s.mgmt.LoginAirJellyPassword)
+	v8.POST("/airjelly/signup", s.mgmt.SignUpAirJelly)
+	v8.POST("/airjelly/signup/verify", s.mgmt.VerifyAirJellySignUp)
+	v8.POST("/airjelly/signup/resend", s.mgmt.ResendAirJellySignUpCode)
 
 	v8.GET("/plugins", s.mgmt.ListPlugins)
 	v8.DELETE("/plugins/:id", s.mgmt.DeletePlugin)
