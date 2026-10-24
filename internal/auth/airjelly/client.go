@@ -127,7 +127,10 @@ func SignUp(ctx context.Context, client *http.Client, email, password string) (*
 	}
 	var result struct {
 		Session
-		User struct {
+		ID         string            `json:"id"`
+		Email      string            `json:"email"`
+		Identities []json.RawMessage `json:"identities"`
+		User       struct {
 			ID         string            `json:"id"`
 			Email      string            `json:"email"`
 			Identities []json.RawMessage `json:"identities"`
@@ -135,6 +138,13 @@ func SignUp(ctx context.Context, client *http.Client, email, password string) (*
 	}
 	if err = json.Unmarshal(b, &result); err != nil {
 		return nil, false, err
+	}
+	// GoTrue returns a bare user when email confirmation is enabled. Some
+	// deployments wrap it under "user"; accept both response shapes.
+	if result.User.ID == "" {
+		result.User.ID = result.ID
+		result.User.Email = result.Email
+		result.User.Identities = result.Identities
 	}
 	if result.User.ID == "" {
 		return nil, false, errors.New("airjelly signup: missing user")

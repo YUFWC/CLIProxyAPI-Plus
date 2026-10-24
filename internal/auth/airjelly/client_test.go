@@ -83,7 +83,7 @@ func TestEmailRegistrationAndVerification(t *testing.T) {
 			if payload["email"] != "new@example.com" || payload["password"] != "password" {
 				t.Fatal("wrong signup payload")
 			}
-			response = `{"user":{"id":"user-1","email":"new@example.com"}}`
+			response = `{"id":"user-1","email":"new@example.com","identities":[{"id":"identity-1"}]}`
 		case "/auth/v1/verify":
 			if payload["type"] != "signup" || payload["token"] != "123456" {
 				t.Fatal("wrong verification payload")
