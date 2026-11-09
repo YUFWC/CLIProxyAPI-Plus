@@ -116,6 +116,8 @@ func TestManagementV8IndependentContract(t *testing.T) {
 		"GET /v8/management/observability/logs", "GET /v8/management/observability/usage/queue",
 		"GET /v8/management/credentials", "POST /v8/management/credentials",
 		"GET /v8/management/oauth/auth-url", "POST /v8/management/oauth/import", "POST /v8/management/oauth/callback",
+		"POST /v8/management/cline-auth-callback", "POST /v8/management/trae-auth-callback",
+		"POST /v8/management/codearts-auth-callback", "POST /v8/management/xiaohuanxiong-auth-callback",
 		"POST /v8/management/routing/cooldown/reset",
 		"GET /v8/management/floatboat-quota",
 		"GET /v8/management/codearts-quota", "GET /v8/management/qoder-cn-quota",
